@@ -1,0 +1,2 @@
+-- Local development seed data. Runs after migrations on `pnpm db:reset`.
+-- Keep it free of real people, real emails and real voices.
