@@ -29,7 +29,16 @@ jobs:
       - run: pnpm --filter web lint
       - run: pnpm --filter web typecheck
       - run: pnpm --filter web test
-      - run: pnpm --filter web build
+      - name: Build (live mode)
+        run: pnpm --filter web build
+      # What Vercel builds while no Supabase env vars are set: the self-contained demo.
+      - name: Build (demo mode, no env)
+        run: pnpm --filter web build
+        env:
+          NEXT_PUBLIC_SITE_URL: ""
+          NEXT_PUBLIC_SUPABASE_URL: ""
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ""
+          NEXT_PUBLIC_API_URL: ""
 
   backend:
     runs-on: ubuntu-latest

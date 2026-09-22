@@ -29,9 +29,11 @@ type Props = {
   userId: string
   exists: boolean
   defaults: CreatorProfileInput
+  /** Demo mode validates the form but saves nothing. */
+  demo?: boolean
 }
 
-export function CreatorProfileForm({ userId, exists, defaults }: Props) {
+export function CreatorProfileForm({ userId, exists, defaults, demo = false }: Props) {
   const router = useRouter()
   const form = useForm<CreatorProfileInput>({
     resolver: zodResolver(creatorProfileSchema),
@@ -40,6 +42,11 @@ export function CreatorProfileForm({ userId, exists, defaults }: Props) {
   const { errors, isSubmitting } = form.formState
 
   async function onSubmit(values: CreatorProfileInput) {
+    if (demo) {
+      toast.success("Profile saved (demo: nothing leaves your browser)")
+      router.push("/studio")
+      return
+    }
     const fields = {
       display_name: values.displayName,
       profession: values.profession || null,

@@ -4,6 +4,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { cache } from "react"
 
 import type { ViewerRole } from "@/lib/auth/destination"
+import { getDemoViewer } from "@/lib/demo/session"
+import { demoMode } from "@/lib/env"
 import type { Database } from "@/lib/supabase/database.types"
 import { createClient } from "@/lib/supabase/server"
 
@@ -30,6 +32,8 @@ export async function loadViewerRole(
 
 /** The signed-in user for this request, verified from the JWT. Memoised per render. */
 export const getViewer = cache(async (): Promise<Viewer | null> => {
+  if (demoMode) return getDemoViewer()
+
   const supabase = await createClient()
   const { data } = await supabase.auth.getClaims()
   const claims = data?.claims

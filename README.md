@@ -66,6 +66,11 @@ the backend environment.
 
 ### Web on Vercel
 
+**Demo mode:** with no Supabase variables set, the web app runs as a self-contained demo:
+fictional creators, a browser-side grounded answer engine (with sources and refusals),
+browser voice calls and a clickable creator studio saved in `localStorage`. Nothing is sent
+to any backend. Set both Supabase variables to switch to the live product.
+
 Project settings: **Root Directory** `apps/web`, **Framework Preset** Next.js, no command
 overrides (Vercel installs the pnpm workspace from the repo root). Environment variables:
 
