@@ -1,0 +1,9 @@
+# Keep CLI uploads small; Git deployments already skip .gitignore'd files.
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+supabase/.temp
+supabase/.branches

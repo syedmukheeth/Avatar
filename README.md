@@ -55,3 +55,35 @@ uv run --directory services/backend pytest
 `NEXT_PUBLIC_*` values ship to the browser: only the Supabase URL, publishable key, API URL
 and feature flags belong there. The Supabase secret key and all provider keys live only in
 the backend environment.
+
+## Deploy (Vercel Services)
+
+`vercel.json` deploys two services from this repo as one Vercel project on one domain:
+
+| Path | Service |
+|---|---|
+| `/api/backend/*` | `services/backend` (FastAPI as a Vercel Function; entrypoint `main.py`) |
+| everything else | `apps/web` (Next.js) |
+
+The backend receives the full path, so its routes live under `API_PREFIX` (`/api/backend`).
+The web app calls it same-origin; leave `NEXT_PUBLIC_API_URL` unset on Vercel.
+
+Vercel Services is in beta and must be enabled for the team. Project environment variables:
+
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | `https://<your-domain>` |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase project |
+| `ENV` | `production` |
+| `ALLOWED_ORIGINS` | `https://<your-domain>` |
+| `SUPABASE_URL`, `SUPABASE_SECRET_KEY` | Supabase project (secret key: server only) |
+| `DATABASE_URL` | Supabase **transaction pooler** URL (port 6543) |
+| `DB_STATEMENT_CACHE_SIZE` / `DB_POOL_MAX_SIZE` | `0` / `3` |
+| `GROQ_API_KEY`, `GEMINI_API_KEY`, `CARTESIA_API_KEY` | Providers |
+
+Only `NEXT_PUBLIC_*` values reach the browser; everything else stays server-side.
+
+Run both services locally with the production routing: `vercel dev -L`.
+
+The realtime voice service (Pipecat, WebRTC over UDP, long-lived calls) cannot run as a
+Vercel Function. It runs on a VM with Docker and Caddy; see `infra/` once added.

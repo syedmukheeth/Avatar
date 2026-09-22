@@ -17,12 +17,18 @@ class Settings(BaseSettings):
     allowed_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:3000"]
     )
+    # Vercel routes /api/backend/* to this service without stripping the prefix, so the API
+    # serves under the same prefix everywhere (local, Vercel, containers).
+    api_prefix: str = "/api/backend"
 
     # Supabase
     supabase_url: str = ""
     supabase_secret_key: SecretStr = SecretStr("")
     database_url: SecretStr = SecretStr("")
     db_pool_max_size: int = 10
+    # 0 when DATABASE_URL is Supabase's transaction pooler (port 6543), which serverless
+    # functions should use; it cannot hold prepared statements across transactions.
+    db_statement_cache_size: int = 100
 
     # Providers
     groq_api_key: SecretStr = SecretStr("")
