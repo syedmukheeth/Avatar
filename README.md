@@ -56,34 +56,39 @@ uv run --directory services/backend pytest
 and feature flags belong there. The Supabase secret key and all provider keys live only in
 the backend environment.
 
-## Deploy (Vercel Services)
+## Deploy
 
-`vercel.json` deploys two services from this repo as one Vercel project on one domain:
+| Part | Host | Config |
+|---|---|---|
+| Web app (`apps/web`) | Vercel | Project settings (below) |
+| API (`services/backend`) | Render | `render.yaml` Blueprint + `services/backend/Dockerfile` |
+| Voice (Pipecat, later) | VM | WebRTC needs UDP and long-lived calls |
 
-| Path | Service |
-|---|---|
-| `/api/backend/*` | `services/backend` (FastAPI as a Vercel Function; entrypoint `main.py`) |
-| everything else | `apps/web` (Next.js) |
+### Web on Vercel
 
-The backend receives the full path, so its routes live under `API_PREFIX` (`/api/backend`).
-The web app calls it same-origin; leave `NEXT_PUBLIC_API_URL` unset on Vercel.
-
-Vercel Services is in beta and must be enabled for the team. Project environment variables:
+Project settings: **Root Directory** `apps/web`, **Framework Preset** Next.js, no command
+overrides (Vercel installs the pnpm workspace from the repo root). Environment variables:
 
 | Variable | Value |
 |---|---|
 | `NEXT_PUBLIC_SITE_URL` | `https://<your-domain>` |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase project |
-| `ENV` | `production` |
-| `ALLOWED_ORIGINS` | `https://<your-domain>` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key |
+| `NEXT_PUBLIC_API_URL` | Render service URL, e.g. `https://mindlink-api.onrender.com` |
+
+### API on Render
+
+Render → **New → Blueprint** → this repo. It creates `mindlink-api` from `render.yaml`,
+builds the Dockerfile and asks for the secrets once. It deploys only after CI passes on
+`main`, and only when `services/backend/**` changes.
+
+| Variable | Value |
+|---|---|
+| `ALLOWED_ORIGINS` | Web origins, comma-separated: `https://<your-domain>,https://<project>.vercel.app` |
+| `ALLOWED_ORIGIN_REGEX` | Optional, for preview deployments: `^https://<project>-[a-z0-9-]+-<team>\.vercel\.app$` |
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY` | Supabase project (secret key: server only) |
-| `DATABASE_URL` | Supabase **transaction pooler** URL (port 6543) |
-| `DB_STATEMENT_CACHE_SIZE` / `DB_POOL_MAX_SIZE` | `0` / `3` |
+| `DATABASE_URL` | Supabase **session pooler** URL (IPv4, port 5432). Render cannot reach the IPv6-only direct host |
 | `GROQ_API_KEY`, `GEMINI_API_KEY`, `CARTESIA_API_KEY` | Providers |
 
-Only `NEXT_PUBLIC_*` values reach the browser; everything else stays server-side.
-
-Run both services locally with the production routing: `vercel dev -L`.
-
-The realtime voice service (Pipecat, WebRTC over UDP, long-lived calls) cannot run as a
-Vercel Function. It runs on a VM with Docker and Caddy; see `infra/` once added.
+Check it with `https://<render-url>/health` (liveness) and `/ready` (config and database).
+The free plan sleeps after 15 idle minutes; switch `plan` in `render.yaml` before launch.

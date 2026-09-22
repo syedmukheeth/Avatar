@@ -17,9 +17,9 @@ async def _init_connection(conn: asyncpg.Connection) -> None:
 async def create_pool(settings: Settings) -> asyncpg.Pool:
     """Pool for the backend role.
 
-    Long-running processes (worker, voice) use a direct or session-mode pooler URL (port 5432).
-    Serverless functions use the transaction pooler (port 6543) with
-    DB_STATEMENT_CACHE_SIZE=0, because it cannot keep prepared statements between transactions.
+    Use a direct or session-mode pooler URL (port 5432); on hosts without IPv6 egress, such as
+    Render, only the session pooler is reachable. The transaction pooler (port 6543) needs
+    DB_STATEMENT_CACHE_SIZE=0 because it cannot keep prepared statements between transactions.
     """
     return await asyncpg.create_pool(
         dsn=settings.database_url.get_secret_value(),
@@ -31,8 +31,8 @@ async def create_pool(settings: Settings) -> asyncpg.Pool:
     )
 
 
-# Vercel gives shutdown hooks 500 ms after SIGTERM.
-_CLOSE_BUDGET_SECS = 0.4
+# Stay well inside the platform grace period after SIGTERM (Render allows 30 s).
+_CLOSE_BUDGET_SECS = 5.0
 
 
 async def close_pool(pool: asyncpg.Pool) -> None:

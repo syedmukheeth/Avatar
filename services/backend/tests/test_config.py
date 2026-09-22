@@ -23,3 +23,19 @@ def test_production_rejects_insecure_origins() -> None:
     )
     assert s.production_errors() == ["origin is not https: http://localhost:3000"]
     assert "CLOUDFLARE_TURN_KEY_ID" in s.missing_for("voice")
+
+
+def test_production_rejects_unanchored_origin_regex() -> None:
+    s = make_settings(
+        env="production",
+        supabase_url="https://x.supabase.co",
+        allowed_origins=["https://mindlink.example"],
+        allowed_origin_regex=r"https://.*\.vercel\.app",
+    )
+    assert s.production_errors() == [
+        "ALLOWED_ORIGIN_REGEX must be anchored and https-only (^https://...$)"
+    ]
+
+
+def test_blank_origin_regex_means_unset() -> None:
+    assert make_settings(allowed_origin_regex="  ").allowed_origin_regex is None

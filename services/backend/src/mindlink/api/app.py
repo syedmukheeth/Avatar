@@ -31,25 +31,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             if app.state.db is not None:
                 await close_pool(app.state.db)
 
-    prefix = settings.api_prefix
     app = FastAPI(
         title="MindLink API",
         version="0.1.0",
         lifespan=lifespan,
-        openapi_url=None if settings.is_production else f"{prefix}/openapi.json",
-        docs_url=None if settings.is_production else f"{prefix}/docs",
+        openapi_url=None if settings.is_production else "/openapi.json",
+        docs_url=None if settings.is_production else "/docs",
         redoc_url=None,
         swagger_ui_oauth2_redirect_url=None,
     )
     app.state.settings = settings
     app.state.role = "api"
-    # Same-origin on Vercel; still needed when the web app runs on another port locally.
+    # The web app (Vercel) and the API (Render) are different origins.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
+        allow_origin_regex=settings.allowed_origin_regex,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["Authorization", "Content-Type"],
         max_age=600,
     )
-    app.include_router(health.router, prefix=prefix)
+    app.include_router(health.router)
     return app

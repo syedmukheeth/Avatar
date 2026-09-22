@@ -45,6 +45,22 @@ jobs:
       - run: uv run pyright
       - run: uv run pytest -q
 
+  # Builds the same image Render deploys and checks that it boots.
+  backend-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -t mindlink-api services/backend
+      - name: Smoke test /health
+        run: |
+          docker run -d --name api -p 8000:8000 -e ENV=development mindlink-api
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs api
+          exit 1
+
   database:
     runs-on: ubuntu-latest
     steps:

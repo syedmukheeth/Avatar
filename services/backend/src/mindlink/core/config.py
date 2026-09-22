@@ -17,17 +17,18 @@ class Settings(BaseSettings):
     allowed_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: ["http://localhost:3000"]
     )
-    # Vercel routes /api/backend/* to this service without stripping the prefix, so the API
-    # serves under the same prefix everywhere (local, Vercel, containers).
-    api_prefix: str = "/api/backend"
+    # Optional anchored regex for extra origins, e.g. Vercel preview deployments:
+    # ^https://avatar-web-[a-z0-9-]+-syedmukheeths-projects\.vercel\.app$
+    allowed_origin_regex: str | None = None
 
     # Supabase
     supabase_url: str = ""
     supabase_secret_key: SecretStr = SecretStr("")
+    # Hosts without IPv6 egress (Render) must use the session pooler: IPv4, port 5432.
     database_url: SecretStr = SecretStr("")
     db_pool_max_size: int = 10
-    # 0 when DATABASE_URL is Supabase's transaction pooler (port 6543), which serverless
-    # functions should use; it cannot hold prepared statements across transactions.
+    # Set to 0 only if DATABASE_URL points at the transaction pooler (port 6543), which cannot
+    # keep prepared statements between transactions.
     db_statement_cache_size: int = 100
 
     # Providers
@@ -64,6 +65,14 @@ class Settings(BaseSettings):
     def _split_csv(cls, value: object) -> object:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("allowed_origin_regex", mode="before")
+    @classmethod
+    def _blank_is_unset(cls, value: object) -> object:
+        # Dashboards often store an empty string for "not set".
+        if isinstance(value, str) and not value.strip():
+            return None
         return value
 
     @property
@@ -106,6 +115,9 @@ class Settings(BaseSettings):
             for origin in self.allowed_origins
             if not origin.startswith("https://")
         ]
+        regex = self.allowed_origin_regex
+        if regex and not (regex.startswith("^https://") and regex.endswith("$")):
+            errors.append("ALLOWED_ORIGIN_REGEX must be anchored and https-only (^https://...$)")
         if not self.supabase_url.startswith("https://"):
             errors.append("SUPABASE_URL is not https")
         return errors

@@ -1,0 +1,45 @@
+# Render Blueprint for the MindLink backend. The web app deploys separately on Vercel.
+# Secrets use `sync: false`: Render asks for them once when the Blueprint is created;
+# change them later under the service's Environment tab.
+services:
+  - type: web
+    name: mindlink-api
+    runtime: docker
+    dockerfilePath: ./services/backend/Dockerfile
+    dockerContext: ./services/backend
+    # Rebuild only when backend code changes.
+    buildFilter:
+      paths:
+        - services/backend/**
+    # Keep close to Supabase and to the US-hosted providers (Groq, Cartesia, Gemini).
+    region: virginia
+    # Free instances sleep after 15 idle minutes (about a minute to wake). Move to a paid
+    # instance type such as 0.5c-512mb before real users arrive.
+    plan: free
+    healthCheckPath: /health
+    # Deploy only after the GitHub CI checks on main pass.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      # e.g. https://mindlink.example,https://avatar-web.vercel.app
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # e.g. ^https://avatar-web-[a-z0-9-]+-syedmukheeths-projects\.vercel\.app$
+      - key: ALLOWED_ORIGIN_REGEX
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      # Session pooler (IPv4, port 5432): Render cannot reach Supabase's IPv6-only direct host.
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CARTESIA_API_KEY
+        sync: false
