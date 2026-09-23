@@ -12,7 +12,7 @@ export type AnswerContext = {
   knowledge: KnowledgeSnippet[]
 }
 
-export type AnswerKind = "grounded" | "refusal" | "identity" | "greeting" | "guard"
+export type AnswerKind = "grounded" | "general" | "refusal" | "identity" | "greeting" | "guard"
 
 export type DemoAnswer = {
   kind: AnswerKind

@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import { aiEnabled, streamAnswer } from "@/lib/ai/gemini"
-import { buildSystemPrompt, splitSources } from "@/lib/ai/prompt"
+import { buildSystemPrompt, parseAnswer, trailerIndex } from "@/lib/ai/prompt"
 import { CHAT_LIMIT, checkLimit, clientKey } from "@/lib/ai/rate-limit"
 import { getDemoCharacter } from "@/lib/demo/characters"
 
@@ -62,12 +62,12 @@ export async function POST(request: Request) {
         for await (const chunk of streamAnswer({
           system,
           history,
-          maxOutputTokens: parsed.data.mode === "voice" ? 220 : 600,
+          maxOutputTokens: parsed.data.mode === "voice" ? 260 : 900,
           signal: request.signal,
         })) {
           full += chunk
-          // Hold back the tail so the trailing "SOURCES:" line is never shown.
-          const marker = full.search(/\n?SOURCES:/i)
+          // Hold back the tail so the machine-readable trailer is never shown.
+          const marker = trailerIndex(full)
           const visible =
             marker >= 0 ? full.slice(0, marker) : full.slice(0, Math.max(0, full.length - 10))
           if (visible.length > emitted) {
@@ -77,8 +77,8 @@ export async function POST(request: Request) {
           if (marker >= 0) break
         }
 
-        const { answer, sources } = splitSources(full)
-        send({ type: "final", answer, sources })
+        const { answer, sources, basis } = parseAnswer(full)
+        send({ type: "final", answer, sources, basis })
       } catch (error) {
         console.error("chat failed:", error instanceof Error ? error.message : "unknown")
         send({ type: "error" })

@@ -1,7 +1,9 @@
 "use client"
 
-import { ArrowUp, FileText, RotateCcw, ShieldCheck } from "lucide-react"
+import { ArrowUp, FileText, RotateCcw, ShieldCheck, Sparkles } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import Markdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 import { CharacterAvatar } from "@/components/character-avatar"
 import { Button } from "@/components/ui/button"
@@ -174,7 +176,7 @@ export function ChatPanel({
             if (!line.startsWith("data:")) continue
             const payload = JSON.parse(line.slice(5).trim()) as
               | { type: "delta"; text: string }
-              | { type: "final"; answer: string; sources: string[] }
+              | { type: "final"; answer: string; sources: string[]; basis?: string }
               | { type: "error" }
             if (payload.type === "delta") {
               streaming += payload.text
@@ -185,7 +187,12 @@ export function ChatPanel({
                 id: crypto.randomUUID(),
                 role: "assistant",
                 text: payload.answer || streaming,
-                kind: payload.sources.length > 0 ? "grounded" : "refusal",
+                kind:
+                  payload.basis === "declined"
+                    ? "refusal"
+                    : payload.sources.length > 0
+                      ? "grounded"
+                      : "general",
                 sources: payload.sources,
               })
               done = true
@@ -333,8 +340,7 @@ export function ChatPanel({
           </Button>
         </div>
         <p className="mt-2 text-center text-xs text-muted-foreground">
-          AI representation of {character.creatorName}. Answers come only from knowledge they
-          approved.
+          AI representation of {character.creatorName}, answering from their approved knowledge.
         </p>
       </form>
     </div>
@@ -359,12 +365,16 @@ function AssistantBubble({
             heldBack ? "border-dashed bg-muted/60" : "bg-card",
           )}
         >
-          {message.text.split("\n\n").map((paragraph, index) => (
-            <p key={index} className={index > 0 ? "mt-2.5" : undefined}>
-              {paragraph}
-            </p>
-          ))}
+          <div className="prose-chat">
+            <Markdown remarkPlugins={[remarkGfm]}>{message.text}</Markdown>
+          </div>
         </div>
+        {message.kind === "general" && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Sparkles className="size-3.5 text-accent-foreground" aria-hidden />
+            General guidance, not from {character.creatorName}&apos;s material
+          </span>
+        )}
         {message.sources.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {message.sources.map((source) => (

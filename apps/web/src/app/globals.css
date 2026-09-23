@@ -142,3 +142,47 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Model answers arrive as markdown: keep them readable without a typography plugin. */
+.prose-chat > :first-child {
+  margin-top: 0;
+}
+.prose-chat > :last-child {
+  margin-bottom: 0;
+}
+.prose-chat p {
+  margin-block: 0.6em;
+}
+.prose-chat ol,
+.prose-chat ul {
+  margin-block: 0.6em;
+  padding-inline-start: 1.35em;
+}
+.prose-chat ol {
+  list-style: decimal;
+}
+.prose-chat ul {
+  list-style: disc;
+}
+.prose-chat li {
+  margin-block: 0.25em;
+}
+.prose-chat strong {
+  font-weight: 600;
+}
+.prose-chat code {
+  background: var(--muted);
+  border-radius: 0.35em;
+  padding: 0.1em 0.35em;
+  font-size: 0.9em;
+}
+.prose-chat pre {
+  background: var(--muted);
+  border-radius: var(--radius-md);
+  padding: 0.75em 0.9em;
+  overflow-x: auto;
+}
+.prose-chat a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

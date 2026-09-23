@@ -6,7 +6,7 @@ import "server-only"
 const API = "https://generativelanguage.googleapis.com/v1beta/models"
 
 // Tried in order: when the first model is overloaded or out of quota, the next one answers.
-export const CHAT_MODELS = ["gemini-3.5-flash", "gemini-2.5-flash"]
+export const CHAT_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash"]
 export const TTS_MODELS = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts"]
 
 /** True when the server can answer with a real model. */
