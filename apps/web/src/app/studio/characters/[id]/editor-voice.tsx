@@ -207,9 +207,8 @@ export function EditorVoice({ character }: { character: StudioCharacter }) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        Demo: your recording never leaves this browser and the sample uses a browser voice. The live
-        product sends the audio to Cartesia to create a private clone and stores your consent
-        record.
+        Your recording stays in this browser. Cloning a character voice from your own audio is
+        coming soon; calls currently use a studio voice.
       </p>
     </div>
   )

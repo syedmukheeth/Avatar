@@ -103,7 +103,7 @@ export function EditorKnowledge({ character }: { character: StudioCharacter }) {
                     : item.status === "processing"
                       ? "Extracting, chunking and embedding…"
                       : "Queued"}
-                  {item.simulated && item.status === "ready" && " · simulated in demo"}
+                  {item.simulated && item.status === "ready" && " · text extraction pending"}
                 </p>
               </div>
               {item.status === "ready" ? (
@@ -176,8 +176,8 @@ export function EditorKnowledge({ character }: { character: StudioCharacter }) {
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        Demo: text files and notes become answerable right away in the test chat. PDFs are simulated
-        here; the live product extracts their text on the server.
+        Notes and text files become answerable in the test chat straight away. Automatic text
+        extraction from PDFs is coming soon.
       </p>
     </div>
   )

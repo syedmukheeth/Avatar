@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { ChatPanelClient } from "@/components/chat/chat-panel-client"
+import { aiEnabled } from "@/lib/ai/gemini"
 import { CharacterTopBar } from "@/components/character-top-bar"
 import { getDemoCharacter } from "@/lib/demo/characters"
 import { toChatCharacter } from "@/lib/demo/chat-character"
@@ -26,6 +27,7 @@ export default async function ChatPage({ params, searchParams }: PageProps<"/c/[
           character={toChatCharacter(character)}
           storageKey={`mindlink-chat-${character.slug}`}
           initialQuestion={question}
+          slug={aiEnabled() ? character.slug : undefined}
         />
       </main>
     </div>

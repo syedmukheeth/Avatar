@@ -1,6 +1,5 @@
 import Link from "next/link"
 
-import { DemoBanner } from "@/components/demo-banner"
 import { Button } from "@/components/ui/button"
 import { homeFor } from "@/lib/auth/destination"
 import { getViewer } from "@/lib/auth/viewer"
@@ -25,7 +24,6 @@ export async function SiteHeader() {
 
   return (
     <>
-      <DemoBanner />
       <header className="sticky top-0 z-40 border-b border-border/70 bg-paper/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
           <Link href="/" className="flex items-center gap-2.5">

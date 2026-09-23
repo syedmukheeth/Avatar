@@ -66,10 +66,19 @@ the backend environment.
 
 ### Web on Vercel
 
-**Demo mode:** with no Supabase variables set, the web app runs as a self-contained demo:
-fictional creators, a browser-side grounded answer engine (with sources and refusals),
-browser voice calls and a clickable creator studio saved in `localStorage`. Nothing is sent
-to any backend. Set both Supabase variables to switch to the live product.
+**Showcase mode:** with no Supabase variables set, the web app runs standalone on sample
+creators, a creator studio saved in `localStorage`, and browser voice calls.
+
+Add `GEMINI_API_KEY` (server-only, never `NEXT_PUBLIC_`) and the characters answer with a real
+model, grounded in their knowledge and citing it, and speak in per-character Gemini voices.
+Requests are rate limited per IP with a daily cap (`src/lib/ai/rate-limit.ts`), and the app
+falls back to local answers whenever the model is unavailable or out of quota.
+
+| Variable | Value |
+|---|---|
+| `GEMINI_API_KEY` | Google AI Studio key. Free-tier keys hit quota quickly; enable billing before showing the site to clients |
+
+Set both Supabase variables to switch to the full product with real accounts and uploads.
 
 Project settings: **Root Directory** `apps/web`, **Framework Preset** Next.js, no command
 overrides (Vercel installs the pnpm workspace from the repo root). Environment variables:

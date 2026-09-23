@@ -147,7 +147,7 @@ export function StudioDashboard({ creatorName, conversations }: Props) {
         onClick={resetStudio}
         className="inline-flex items-center gap-1.5 self-start text-xs text-muted-foreground hover:text-foreground"
       >
-        <RotateCcw className="size-3.5" aria-hidden /> Reset demo studio
+        <RotateCcw className="size-3.5" aria-hidden /> Reset studio data
       </button>
     </div>
   )

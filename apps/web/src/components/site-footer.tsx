@@ -7,6 +7,10 @@ export function SiteFooter() {
         <p>
           <span className="font-display text-base text-foreground">MindLink</span> · AI characters
           are clearly labelled and answer only from creator-approved knowledge.
+          <br />
+          <span className="text-xs">
+            Characters on this site are sample creators built to show how MindLink works.
+          </span>
         </p>
         <nav className="flex gap-5">
           <Link href="/explore" className="hover:text-foreground">

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 
 import { VoiceCallClient } from "@/app/c/[slug]/call/voice-call-client"
 import { CharacterTopBar } from "@/components/character-top-bar"
+import { aiEnabled } from "@/lib/ai/gemini"
 import { Button } from "@/components/ui/button"
 import { getDemoCharacter } from "@/lib/demo/characters"
 import { toChatCharacter } from "@/lib/demo/chat-character"
@@ -23,7 +24,10 @@ export default async function CallPage({ params }: PageProps<"/c/[slug]/call">) 
       <CharacterTopBar character={character} current="call" />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4">
         {character.voiceReady ? (
-          <VoiceCallClient character={toChatCharacter(character)} />
+          <VoiceCallClient
+            character={toChatCharacter(character)}
+            slug={aiEnabled() ? character.slug : undefined}
+          />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <h1 className="text-3xl font-medium">Voice is on its way</h1>

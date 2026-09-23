@@ -8,7 +8,7 @@ const OPTIONS = [
     role: "creator",
     icon: Sparkles,
     title: "Explore as a creator",
-    body: "Open Maya's studio: build a character, add knowledge, record a voice and publish.",
+    body: "Open the studio: build a character, add knowledge, record a voice and publish.",
   },
   {
     role: "user",
@@ -30,7 +30,7 @@ export function DemoLogin({
     <div className="flex w-full max-w-lg animate-rise flex-col gap-8">
       <div className="flex flex-col items-center gap-4 text-center">
         <BrandMark size={44} />
-        <h1 className="text-4xl font-medium">Step into the demo</h1>
+        <h1 className="text-4xl font-medium">Start exploring</h1>
         <p className="text-muted-foreground">
           No account needed. Pick a side; you can switch any time by signing out.
         </p>
@@ -57,7 +57,7 @@ export function DemoLogin({
         ))}
       </div>
       <p className="text-center text-xs text-muted-foreground">
-        The live product signs people in with an email link or Google.
+        Email and Google sign-in are coming soon.
       </p>
     </div>
   )

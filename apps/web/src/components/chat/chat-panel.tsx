@@ -31,6 +31,8 @@ type Props = {
   storageKey: string | null
   initialQuestion?: string
   compact?: boolean
+  /** Character slug on the server; set to answer with the real model. */
+  slug?: string
 }
 
 function loadHistory(key: string | null): Message[] {
@@ -52,7 +54,13 @@ function saveHistory(key: string | null, messages: Message[]) {
   }
 }
 
-export function ChatPanel({ character, storageKey, initialQuestion, compact = false }: Props) {
+export function ChatPanel({
+  character,
+  storageKey,
+  initialQuestion,
+  compact = false,
+  slug,
+}: Props) {
   // Rendered client-only (see chat-panel-client.tsx), so reading storage here is safe.
   const [messages, setMessages] = useState<Message[]>(() => loadHistory(storageKey))
   const [draft, setDraft] = useState("")
@@ -60,30 +68,40 @@ export function ChatPanel({ character, storageKey, initialQuestion, compact = fa
   const [streamed, setStreamed] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
   const timers = useRef<number[]>([])
+  const abortRef = useRef<AbortController | null>(null)
   const askedInitial = useRef(false)
 
   useEffect(() => {
     const pending = timers.current
-    return () => pending.forEach((id) => window.clearTimeout(id))
+    const inFlight = abortRef
+    return () => {
+      pending.forEach((id) => window.clearTimeout(id))
+      inFlight.current?.abort()
+    }
   }, [])
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" })
   }, [messages, streamed, phase])
 
-  const send = useCallback(
-    (raw: string) => {
-      const question = raw.trim()
-      if (!question || phase !== "idle") return
-      const userMessage: Message = { id: crypto.randomUUID(), role: "user", text: question }
-      setMessages((current) => [...current, userMessage])
-      setDraft("")
-      setPhase("thinking")
+  const finish = useCallback(
+    (message: Message) => {
+      setMessages((current) => {
+        const next = [...current, message]
+        saveHistory(storageKey, next)
+        return next
+      })
+      setStreamed("")
+      setPhase("idle")
+    },
+    [storageKey],
+  )
 
+  /** Offline path: retrieval over the character's knowledge, typed out word by word. */
+  const answerLocally = useCallback(
+    (question: string) => {
       const result = answer(question, character)
       const words = result.text.split(" ")
-      const thinkMs = 450 + Math.min(600, question.length * 8)
-
       timers.current.push(
         window.setTimeout(() => {
           setPhase("streaming")
@@ -95,34 +113,103 @@ export function ChatPanel({ character, storageKey, initialQuestion, compact = fa
               timers.current.push(window.setTimeout(tick, 28))
               return
             }
-            setMessages((current) => {
-              const next: Message[] = [
-                ...current,
-                {
-                  id: crypto.randomUUID(),
-                  role: "assistant",
-                  text: result.text,
-                  kind: result.kind,
-                  sources: result.sources,
-                },
-              ]
-              saveHistory(storageKey, next)
-              return next
+            finish({
+              id: crypto.randomUUID(),
+              role: "assistant",
+              text: result.text,
+              kind: result.kind,
+              sources: result.sources,
             })
-            setStreamed("")
-            setPhase("idle")
           }
           tick()
-        }, thinkMs),
+        }, 420),
       )
     },
-    [character, phase, storageKey],
+    [character, finish],
+  )
+
+  const send = useCallback(
+    async (raw: string) => {
+      const question = raw.trim()
+      if (!question || phase !== "idle") return
+      const history = [
+        ...messages,
+        { id: crypto.randomUUID(), role: "user" as const, text: question },
+      ]
+      setMessages(history)
+      setDraft("")
+      setPhase("thinking")
+
+      if (!slug) {
+        answerLocally(question)
+        return
+      }
+
+      const controller = new AbortController()
+      abortRef.current = controller
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({
+            slug,
+            mode: "text",
+            messages: history.slice(-8).map(({ role, text }) => ({ role, text })),
+          }),
+        })
+        if (!response.ok || !response.body) throw new Error(String(response.status))
+
+        const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+        let buffer = ""
+        let streaming = ""
+        let done = false
+        while (!done) {
+          const { done: finished, value } = await reader.read()
+          if (finished) break
+          buffer += value
+          const lines = buffer.split("\n")
+          buffer = lines.pop() ?? ""
+          for (const line of lines) {
+            if (!line.startsWith("data:")) continue
+            const payload = JSON.parse(line.slice(5).trim()) as
+              | { type: "delta"; text: string }
+              | { type: "final"; answer: string; sources: string[] }
+              | { type: "error" }
+            if (payload.type === "delta") {
+              streaming += payload.text
+              setPhase("streaming")
+              setStreamed(streaming)
+            } else if (payload.type === "final") {
+              finish({
+                id: crypto.randomUUID(),
+                role: "assistant",
+                text: payload.answer || streaming,
+                kind: payload.sources.length > 0 ? "grounded" : "refusal",
+                sources: payload.sources,
+              })
+              done = true
+            } else {
+              throw new Error("stream error")
+            }
+          }
+        }
+        if (!done) throw new Error("stream ended early")
+      } catch (error) {
+        if (controller.signal.aborted) return
+        console.error("chat request failed", error)
+        answerLocally(question)
+      } finally {
+        abortRef.current = null
+      }
+    },
+    [answerLocally, finish, messages, phase, slug],
   )
 
   useEffect(() => {
     if (initialQuestion && !askedInitial.current) {
       askedInitial.current = true
-      send(initialQuestion)
+      void send(initialQuestion)
     }
   }, [initialQuestion, send])
 
@@ -150,7 +237,7 @@ export function ChatPanel({ character, storageKey, initialQuestion, compact = fa
                   <button
                     key={question}
                     type="button"
-                    onClick={() => send(question)}
+                    onClick={() => void send(question)}
                     className="rounded-full border bg-card px-3.5 py-2 text-sm transition-colors hover:border-primary/40 hover:bg-primary-soft/60"
                   >
                     {question}
@@ -203,7 +290,7 @@ export function ChatPanel({ character, storageKey, initialQuestion, compact = fa
       <form
         onSubmit={(event) => {
           event.preventDefault()
-          send(draft)
+          void send(draft)
         }}
         className="mx-auto w-full max-w-2xl pt-2"
       >
@@ -214,7 +301,7 @@ export function ChatPanel({ character, storageKey, initialQuestion, compact = fa
             onKeyDown={(event) => {
               if (event.key === "Enter" && !event.shiftKey) {
                 event.preventDefault()
-                send(draft)
+                void send(draft)
               }
             }}
             rows={1}

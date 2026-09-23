@@ -46,7 +46,7 @@ const STATUS: Record<CallState, string> = {
   ended: "Call ended",
 }
 
-/** Voice answers stay short, like the real voice mode: first paragraph, two sentences. */
+/** Spoken answers stay short: first paragraph, two sentences. */
 function toSpoken(text: string): string {
   const first = text.split("\n\n")[0] ?? text
   const sentences = first.match(/[^.!?]+[.!?]+/g) ?? [first]
@@ -59,9 +59,11 @@ function formatClock(totalSecs: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
 
+type Props = { character: ChatCharacter; slug?: string }
+
 // Rendered client-only (see voice-call-client.tsx). Handlers below are plain functions: browser
 // callbacks read live state through refs, so a stale closure can never act on an ended call.
-export function VoiceCall({ character }: { character: ChatCharacter }) {
+export function VoiceCall({ character, slug }: Props) {
   const [state, setState] = useState<CallState>("idle")
   const [lines, setLines] = useState<Line[]>([])
   const [interim, setInterim] = useState("")
@@ -73,11 +75,13 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
   const stateRef = useRef<CallState>("idle")
   const recognitionRef = useRef<Recognition | null>(null)
   const timersRef = useRef<number[]>([])
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const requestRef = useRef<AbortController | null>(null)
 
   const active = state !== "idle" && state !== "ended"
 
   useEffect(() => {
-    // Chrome loads voices lazily; asking early makes the first answer sound right.
+    // Chrome loads voices lazily; asking early makes the fallback voice sound right.
     window.speechSynthesis?.getVoices()
   }, [])
 
@@ -90,8 +94,12 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
   useEffect(() => {
     const timers = timersRef
     const recognition = recognitionRef
+    const audio = audioRef
+    const request = requestRef
     return () => {
       recognition.current?.abort()
+      request.current?.abort()
+      audio.current?.pause()
       window.speechSynthesis?.cancel()
       timers.current.forEach((id) => window.clearTimeout(id))
     }
@@ -116,9 +124,17 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
     setInterim("")
   }
 
+  function stopAudio() {
+    audioRef.current?.pause()
+    audioRef.current = null
+    window.speechSynthesis?.cancel()
+  }
+
   function endCall() {
     stopListening()
-    window.speechSynthesis?.cancel()
+    stopAudio()
+    requestRef.current?.abort()
+    requestRef.current = null
     timersRef.current.forEach((id) => window.clearTimeout(id))
     timersRef.current = []
     go("ended")
@@ -143,7 +159,7 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
       setInterim(partial)
       if (finalText.trim()) {
         stopListening()
-        respond(finalText.trim())
+        void respond(finalText.trim())
       }
     }
     recognition.onerror = (event) => {
@@ -162,14 +178,14 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
     recognition.start()
   }
 
-  function speak(text: string) {
+  function speakInBrowser(text: string) {
     const synth = window.speechSynthesis
     if (!synth) {
       later(listen, 2500)
       return
     }
     const utterance = new SpeechSynthesisUtterance(text)
-    const hint = character.voice ?? { lang: "en-US", gender: "female", pitch: 1, rate: 1 }
+    const hint = character.voice ?? { lang: "en-US", gender: "female" as const, pitch: 1, rate: 1 }
     utterance.voice = pickVoice(synth.getVoices(), hint)
     utterance.lang = utterance.voice?.lang ?? hint.lang
     utterance.pitch = hint.pitch
@@ -182,15 +198,98 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
     synth.speak(utterance)
   }
 
-  function respond(question: string) {
+  async function speak(text: string) {
+    if (!slug) {
+      speakInBrowser(text)
+      return
+    }
+    const controller = new AbortController()
+    requestRef.current = controller
+    try {
+      const response = await fetch("/api/speech", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({ slug, text }),
+      })
+      if (!response.ok) throw new Error(String(response.status))
+      const url = URL.createObjectURL(await response.blob())
+      if (stateRef.current === "ended" || stateRef.current === "idle") {
+        URL.revokeObjectURL(url)
+        return
+      }
+      const audio = new Audio(url)
+      audioRef.current = audio
+      audio.onplay = () => go("speaking")
+      audio.onended = () => {
+        URL.revokeObjectURL(url)
+        if (stateRef.current === "speaking") listen()
+      }
+      audio.onerror = () => {
+        URL.revokeObjectURL(url)
+        speakInBrowser(text)
+      }
+      await audio.play()
+    } catch (error) {
+      if (controller.signal.aborted) return
+      console.error("speech failed", error)
+      speakInBrowser(text)
+    } finally {
+      requestRef.current = null
+    }
+  }
+
+  /** Asks the model for a spoken-length answer, falling back to local retrieval. */
+  async function generate(question: string, history: Line[]): Promise<string> {
+    if (!slug) return toSpoken(answer(question, character).text)
+    const controller = new AbortController()
+    requestRef.current = controller
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          slug,
+          mode: "voice",
+          messages: [
+            ...history.slice(-6).map((line) => ({
+              role: line.who === "ai" ? ("assistant" as const) : ("user" as const),
+              text: line.text,
+            })),
+            { role: "user" as const, text: question },
+          ],
+        }),
+      })
+      if (!response.ok || !response.body) throw new Error(String(response.status))
+      const text = await response.text()
+      let full = ""
+      for (const line of text.split("\n")) {
+        if (!line.startsWith("data:")) continue
+        const payload = JSON.parse(line.slice(5).trim()) as
+          { type: "delta"; text: string } | { type: "final"; answer: string } | { type: "error" }
+        if (payload.type === "final") return payload.answer || full
+        if (payload.type === "delta") full += payload.text
+      }
+      if (full.trim()) return full.trim()
+      throw new Error("empty answer")
+    } catch (error) {
+      if (controller.signal.aborted) return ""
+      console.error("voice answer failed", error)
+      return toSpoken(answer(question, character).text)
+    } finally {
+      requestRef.current = null
+    }
+  }
+
+  async function respond(question: string) {
+    const history = lines
     setLines((current) => [...current, { id: crypto.randomUUID(), who: "you", text: question }])
     go("thinking")
-    later(() => {
-      if (stateRef.current !== "thinking") return
-      const spoken = toSpoken(answer(question, character).text)
-      setLines((current) => [...current, { id: crypto.randomUUID(), who: "ai", text: spoken }])
-      speak(spoken)
-    }, 650)
+    const text = await generate(question, history)
+    if (!text || stateRef.current !== "thinking") return
+    setLines((current) => [...current, { id: crypto.randomUUID(), who: "ai", text }])
+    await speak(text)
   }
 
   function startCall() {
@@ -202,12 +301,12 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
     later(() => {
       const greeting = toSpoken(character.greeting)
       setLines([{ id: crypto.randomUUID(), who: "ai", text: greeting }])
-      speak(greeting)
-    }, 900)
+      void speak(greeting)
+    }, 500)
   }
 
   function interrupt() {
-    window.speechSynthesis?.cancel()
+    stopAudio()
     listen()
   }
 
@@ -217,7 +316,7 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
     if (!question || state !== "listening") return
     setTyped("")
     stopListening()
-    respond(question)
+    void respond(question)
   }
 
   const orbState: OrbState = state === "ended" ? "idle" : state
@@ -320,8 +419,8 @@ export function VoiceCall({ character }: { character: ChatCharacter }) {
       )}
 
       <p className="max-w-md text-center text-xs text-muted-foreground">
-        Demo voice uses your browser&apos;s built-in speech. The live product streams the
-        creator&apos;s cloned voice over WebRTC, and you can interrupt just by talking.
+        Calls are answered from {character.creatorName}&apos;s approved knowledge. Tap Interrupt to
+        jump in while {character.name} is speaking.
       </p>
     </div>
   )

@@ -3,7 +3,6 @@ import { redirect } from "next/navigation"
 
 import { DemoLogin } from "@/app/login/demo-login"
 import { LoginForm } from "@/app/login/login-form"
-import { DemoBanner } from "@/components/demo-banner"
 import { afterSignIn, safeNextPath } from "@/lib/auth/destination"
 import { getViewer } from "@/lib/auth/viewer"
 import { demoMode } from "@/lib/env"
@@ -22,7 +21,6 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   if (demoMode) {
     return (
       <>
-        <DemoBanner />
         <main className="flex flex-1 items-center justify-center px-4 py-16">
           <DemoLogin next={next} preferCreator={as === "creator"} />
         </main>

@@ -2,7 +2,6 @@ import { ArrowLeft, MessageCircle, Phone } from "lucide-react"
 import Link from "next/link"
 
 import { CharacterAvatar } from "@/components/character-avatar"
-import { DemoBanner } from "@/components/demo-banner"
 import { Button } from "@/components/ui/button"
 import type { DemoCharacter } from "@/lib/demo/characters"
 
@@ -15,7 +14,6 @@ type Props = {
 export function CharacterTopBar({ character, current }: Props) {
   return (
     <>
-      <DemoBanner />
       <header className="border-b border-border/70 bg-paper/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-4xl items-center gap-3 px-4">
           <Button asChild variant="ghost" size="icon" aria-label={`Back to ${character.name}`}>

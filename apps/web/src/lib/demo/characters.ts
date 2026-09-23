@@ -26,8 +26,10 @@ export type DemoCharacter = {
   knowledge: KnowledgeSnippet[]
   conversations: number
   voiceReady: boolean
-  /** Demo only: which built-in browser voice to prefer for calls. */
+  /** Fallback browser voice when the server has no model key. */
   voice: VoiceHint
+  /** Gemini prebuilt voice and delivery note used for real speech. */
+  speech: { voice: string; style: string }
 }
 
 export const DEMO_CHARACTERS: DemoCharacter[] = [
@@ -126,6 +128,10 @@ export const DEMO_CHARACTERS: DemoCharacter[] = [
     conversations: 1284,
     voiceReady: true,
     voice: { lang: "en-IN", gender: "female", pitch: 1.05, rate: 1 },
+    speech: {
+      voice: "Kore",
+      style: "Speak warmly and encouragingly, like a coach who believes in you, at a relaxed pace.",
+    },
   },
   {
     id: "c-arjun",
@@ -197,6 +203,10 @@ export const DEMO_CHARACTERS: DemoCharacter[] = [
     conversations: 932,
     voiceReady: true,
     voice: { lang: "en-IN", gender: "male", pitch: 0.95, rate: 1 },
+    speech: {
+      voice: "Charon",
+      style: "Speak calmly and directly, like an experienced investor giving candid advice.",
+    },
   },
   {
     id: "c-priya",
@@ -274,6 +284,10 @@ export const DEMO_CHARACTERS: DemoCharacter[] = [
     conversations: 1720,
     voiceReady: false,
     voice: { lang: "en-IN", gender: "female", pitch: 1.1, rate: 1 },
+    speech: {
+      voice: "Leda",
+      style: "Speak clearly and patiently, like a teacher explaining money basics without jargon.",
+    },
   },
   {
     id: "c-kenji",
@@ -331,6 +345,10 @@ export const DEMO_CHARACTERS: DemoCharacter[] = [
     conversations: 611,
     voiceReady: true,
     voice: { lang: "en-US", gender: "male", pitch: 0.9, rate: 0.97 },
+    speech: {
+      voice: "Iapetus",
+      style: "Speak thoughtfully and precisely, like a designer giving considered critique.",
+    },
   },
   {
     id: "c-sofia",
@@ -383,6 +401,10 @@ export const DEMO_CHARACTERS: DemoCharacter[] = [
     conversations: 845,
     voiceReady: true,
     voice: { lang: "en-GB", gender: "female", pitch: 1.1, rate: 1.03 },
+    speech: {
+      voice: "Aoede",
+      style: "Speak brightly and clearly, like a language teacher who wants you to follow along.",
+    },
   },
   {
     id: "c-rohan",
@@ -431,6 +453,10 @@ export const DEMO_CHARACTERS: DemoCharacter[] = [
     conversations: 2310,
     voiceReady: true,
     voice: { lang: "en-IN", gender: "male", pitch: 1, rate: 1.05 },
+    speech: {
+      voice: "Puck",
+      style: "Speak with friendly energy, like an instructor who enjoys explaining things.",
+    },
   },
 ]
 

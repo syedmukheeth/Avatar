@@ -29,7 +29,7 @@ type Props = {
   userId: string
   exists: boolean
   defaults: CreatorProfileInput
-  /** Demo mode validates the form but saves nothing. */
+  /** Without Supabase the form validates but saves nothing. */
   demo?: boolean
 }
 
@@ -43,7 +43,7 @@ export function CreatorProfileForm({ userId, exists, defaults, demo = false }: P
 
   async function onSubmit(values: CreatorProfileInput) {
     if (demo) {
-      toast.success("Profile saved (demo: nothing leaves your browser)")
+      toast.success("Profile saved on this device")
       router.push("/studio")
       return
     }
